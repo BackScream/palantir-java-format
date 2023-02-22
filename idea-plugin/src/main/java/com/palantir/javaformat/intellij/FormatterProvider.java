@@ -172,9 +172,15 @@ final class FormatterProvider {
     private static Optional<Sdk> getLatestJdk() {
         Sdk[] sdks = ProjectJdkTable.getInstance().getAllJdks();
         if (sdks.length > 0) {
-            return Arrays.stream(sdks)
+            Optional<Sdk> java17Sdk = Arrays.stream(sdks)
                     .filter(sdk -> sdk.getVersionString().contains("17"))
                     .findFirst();
+
+            if (java17Sdk.isEmpty()) {
+                throw new RuntimeException("Java 17 sdk required to run plugin");
+            }
+
+            return java17Sdk;
         } else {
             return Optional.empty();
         }
