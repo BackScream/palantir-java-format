@@ -23,7 +23,10 @@ import com.google.common.collect.Iterables;
 import com.intellij.openapi.application.ApplicationInfo;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.projectRoots.JdkUtil;
+import com.intellij.openapi.projectRoots.ProjectJdkTable;
 import com.intellij.openapi.projectRoots.Sdk;
+import com.intellij.openapi.projectRoots.SdkType;
+import com.intellij.openapi.projectRoots.SdkTypeId;
 import com.intellij.openapi.roots.ProjectRootManager;
 import com.intellij.openapi.util.BuildNumber;
 import com.intellij.openapi.util.SystemInfo;
@@ -37,6 +40,8 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -123,7 +128,7 @@ final class FormatterProvider {
     }
 
     private static Path getJdkPath(Project project) {
-        return getProjectJdk(project)
+        return getLatestJdk()
                 .map(Sdk::getHomePath)
                 .map(Path::of)
                 .map(sdkHome -> sdkHome.resolve("bin").resolve("java" + (SystemInfo.isWindows ? ".exe" : "")))
@@ -132,7 +137,7 @@ final class FormatterProvider {
     }
 
     private static Integer getSdkVersion(Project project) {
-        return getProjectJdk(project)
+        return getLatestJdk()
                 .map(FormatterProvider::parseSdkJavaVersion)
                 .orElseThrow(() -> new IllegalStateException("Could not determine jdk version for project " + project));
     }
@@ -159,8 +164,20 @@ final class FormatterProvider {
         }
     }
 
+    @Deprecated
     private static Optional<Sdk> getProjectJdk(Project project) {
         return Optional.ofNullable(ProjectRootManager.getInstance(project).getProjectSdk());
+    }
+
+    private static Optional<Sdk> getLatestJdk() {
+        Sdk[] sdks = ProjectJdkTable.getInstance().getAllJdks();
+        if (sdks.length > 0) {
+            return Arrays.stream(sdks)
+                    .filter(sdk -> sdk.getVersionString().contains("17"))
+                    .findFirst();
+        } else {
+            return Optional.empty();
+        }
     }
 
     private static URL[] toUrlsUnchecked(List<Path> paths) {

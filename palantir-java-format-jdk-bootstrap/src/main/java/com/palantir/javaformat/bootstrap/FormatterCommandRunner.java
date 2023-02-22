@@ -28,6 +28,8 @@ final class FormatterCommandRunner {
     private static final Pattern SYNTAX_ERROR_PATTERN = Pattern.compile(":\\d+:\\d+:\\serror:\\s");
 
     static Optional<String> runWithStdin(List<String> command, String input) throws IOException {
+//        String customJdkPath = "/Users/luca.gregori/Library/Java/JavaVirtualMachines/corretto-11.0.17/Contents/Home";
+//        command.add("-Djava.home=" + customJdkPath);
         Process process = new ProcessBuilder().command(command).start();
 
         try (OutputStream outputStream = process.getOutputStream()) {
