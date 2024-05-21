@@ -18,7 +18,6 @@ import static com.google.common.collect.Iterables.getLast;
 import static java.util.stream.Collectors.joining;
 
 import com.google.common.base.CharMatcher;
-import com.google.common.base.Strings;
 import com.google.common.base.Verify;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -84,7 +83,7 @@ public final class StringWrapper {
             if (!expected.equals(actual)) {
                 throw new FormatterException(String.format(
                         "Something has gone terribly wrong. Please file a bug: "
-                                + "https://github.com/google/google-java-format/issues/new"
+                                + "https://github.com/palantir/palantir-java-format/issues/new"
                                 + "\n\n=== Actual: ===\n%s\n=== Expected: ===\n%s\n",
                         actual, expected));
             }
@@ -316,10 +315,7 @@ public final class StringWrapper {
 
         return lines.stream()
                 .collect(joining(
-                        "\""
-                                + separator
-                                + Strings.repeat(" ", (first0 ? firstLineStartColumn + 4 : textStartColumn - 2))
-                                + "+ \"",
+                        "\"" + separator + " ".repeat(first0 ? firstLineStartColumn + 4 : textStartColumn - 2) + "+ \"",
                         "\"",
                         "\""));
     }

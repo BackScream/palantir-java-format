@@ -109,7 +109,7 @@ public class RemoveUnusedImports {
                 try {
                     scan((List<? extends Tree>) CASE_TREE_GET_LABELS.invoke(tree), null);
                 } catch (ReflectiveOperationException e) {
-                    throw new LinkageError(e.getMessage(), e);
+                    throw new RuntimeException(e.getMessage(), e);
                 }
             }
             return super.visitCase(tree, null);
@@ -241,7 +241,7 @@ public class RemoveUnusedImports {
         return replacements;
     }
 
-    private static String getSimpleName(JCImport importTree) {
+    private static String getSimpleName(ImportTree importTree) {
         return importTree.getQualifiedIdentifier() instanceof JCIdent
                 ? ((JCIdent) importTree.getQualifiedIdentifier()).getName().toString()
                 : ((JCFieldAccess) importTree.getQualifiedIdentifier())
@@ -253,7 +253,7 @@ public class RemoveUnusedImports {
             JCCompilationUnit unit,
             Set<String> usedNames,
             Multimap<String, Range<Integer>> usedInJavadoc,
-            JCImport importTree,
+            ImportTree importTree,
             String simpleName) {
         String qualifier = ((JCFieldAccess) importTree.getQualifiedIdentifier())
                 .getExpression()

@@ -17,6 +17,7 @@
 package com.palantir.javaformat.gradle
 
 import spock.lang.Specification
+import spock.lang.Unroll
 
 class ConfigureJavaFormatterXmlTest extends Specification {
 
@@ -60,6 +61,7 @@ class ConfigureJavaFormatterXmlTest extends Specification {
           </component>
         </root>
         """.stripIndent()
+    public static final ArrayList<String> ACTIONS_ON_SAVE = ['Format', 'Optimize']
 
     void testConfigure_missingEntireBlock_added() {
         def node = new XmlParser().parseText(MISSING_ENTIRE_BLOCK)
@@ -102,6 +104,110 @@ class ConfigureJavaFormatterXmlTest extends Specification {
 
         then:
         xmlToString(node) == EXPECTED
+    }
+
+    @Unroll
+    void 'adds #action OnSave block where none exists'(action) {
+        // language=xml
+        def node = new XmlParser().parseText '''
+            <root>
+            </root>
+        '''.stripIndent(true)
+
+        when:
+        ConfigureJavaFormatterXml.configureWorkspaceXml(node)
+
+        def newXml = xmlSubcomponentToString(node, "${action}OnSaveOptions").strip()
+
+        then:
+        def expected = """
+            <component name="${action}OnSaveOptions">
+              <option name="myRunOnSave" value="true"/>
+              <option name="myAllFileTypesSelected" value="false"/>
+              <option name="mySelectedFileTypes">
+                <set>
+                  <option value="JAVA"/>
+                </set>
+              </option>
+            </component>
+        """.stripIndent(true).strip()
+
+        newXml == expected
+
+        where:
+        action << ACTIONS_ON_SAVE
+    }
+
+    @Unroll
+    void 'adds Java to existing #action OnSave block'(action) {
+        def node = new XmlParser().parseText """
+            <root>
+              <component name="${action}OnSaveOptions">
+                <option name="myRunOnSave" value="true"/>
+                <option name="myAllFileTypesSelected" value="false"/>
+                <option name="mySelectedFileTypes">
+                  <set>
+                    <option value="Go"/>
+                  </set>
+                </option>
+              </component>
+            </root>
+        """.stripIndent(true)
+
+        when:
+        ConfigureJavaFormatterXml.configureWorkspaceXml(node)
+        def newXml = xmlSubcomponentToString(node, "${action}OnSaveOptions")
+
+        then:
+        def expected = """
+            <component name="${action}OnSaveOptions">
+              <option name="myRunOnSave" value="true"/>
+              <option name="myAllFileTypesSelected" value="false"/>
+              <option name="mySelectedFileTypes">
+                <set>
+                  <option value="Go"/>
+                  <option value="JAVA"/>
+                </set>
+              </option>
+            </component>
+        """.stripIndent(true).strip()
+
+        newXml == expected
+
+        where:
+        action << ACTIONS_ON_SAVE
+    }
+
+    @Unroll
+    void 'if all file types are already configured to #action on save, dont change anything'() {
+        def node = new XmlParser().parseText """
+            <root>
+              <component name="${action}OnSaveOptions">
+                <option name="myRunOnSave" value="true"/>
+                <!-- if myAllFileTypesSelected does not exist, it defaults to true -->
+              </component>
+            </root>
+        """.stripIndent(true)
+
+        when:
+        ConfigureJavaFormatterXml.configureWorkspaceXml(node)
+        def newXml = xmlSubcomponentToString(node, "${action}OnSaveOptions").strip()
+
+        then:
+        def expected = """
+            <component name="${action}OnSaveOptions">
+              <option name="myRunOnSave" value="true"/>
+            </component>
+        """.stripIndent(true).strip()
+
+        newXml == expected
+
+        where:
+        action << ACTIONS_ON_SAVE
+    }
+
+    private static String xmlSubcomponentToString(Node node, String name) {
+        xmlToString(node.children().find { it.@name == name }).strip()
     }
 
     static String xmlToString(Node node) {

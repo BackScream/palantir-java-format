@@ -44,7 +44,6 @@ import com.sun.tools.javac.tree.JCTree.JCCompilationUnit;
 import com.sun.tools.javac.util.Context;
 import com.sun.tools.javac.util.Log;
 import com.sun.tools.javac.util.Options;
-import java.io.IOError;
 import java.io.IOException;
 import java.net.URI;
 import java.util.Collection;
@@ -92,26 +91,20 @@ public final class Formatter {
 
     private final JavaFormatterOptions options;
     private final boolean debugMode;
-    private final JavaFormatterInternalOptions internalOptions;
 
     @VisibleForTesting
-    Formatter(JavaFormatterOptions options, boolean debugMode, JavaFormatterInternalOptions internalOptions) {
+    Formatter(JavaFormatterOptions options, boolean debugMode) {
         this.options = options;
         this.debugMode = debugMode;
-        this.internalOptions = internalOptions;
     }
 
     /** A new Formatter instance with default options. */
     public static Formatter create() {
-        return new Formatter(
-                JavaFormatterOptions.defaultOptions(),
-                false,
-                JavaFormatterInternalOptions.builder().build());
+        return new Formatter(JavaFormatterOptions.defaultOptions(), false);
     }
 
     public static Formatter createFormatter(JavaFormatterOptions options) {
-        return new Formatter(
-                options, false, JavaFormatterInternalOptions.builder().build());
+        return new Formatter(options, false);
     }
 
     /**
@@ -145,7 +138,7 @@ public final class Formatter {
                         .getConstructor(OpsBuilder.class, int.class)
                         .newInstance(opsBuilder, options.indentationMultiplier());
             } catch (ReflectiveOperationException e) {
-                throw new LinkageError(e.getMessage(), e);
+                throw new RuntimeException(e.getMessage(), e);
             }
         } else {
             visitor = new JavaInputAstVisitor(opsBuilder, options.indentationMultiplier());
@@ -185,7 +178,7 @@ public final class Formatter {
             fileManager.setLocation(StandardLocation.PLATFORM_CLASS_PATH, ImmutableList.of());
         } catch (IOException e) {
             // impossible
-            throw new IOError(e);
+            throw new RuntimeException(e);
         }
         SimpleJavaFileObject source = new SimpleJavaFileObject(URI.create("source"), JavaFileObject.Kind.SOURCE) {
             @Override
@@ -272,6 +265,19 @@ public final class Formatter {
     }
 
     /**
+     * Fixes imports (e.g. ordering, spacing, and removal of unused import statements).
+     *
+     * @param input the input string
+     * @return the output string
+     * @throws FormatterException if the input string cannot be parsed
+     * @see <a href="https://google.github.io/styleguide/javaguide.html#s3.3.3-import-ordering-and-spacing">Google Java
+     *     Style Guide - 3.3.3 Import ordering and spacing</a>
+     */
+    public String fixImports(String input) throws FormatterException {
+        return ImportOrderer.reorderImports(RemoveUnusedImports.removeUnusedImports(input), options.style());
+    }
+
+    /**
      * Format an input string (a Java compilation unit), for only the specified character ranges. These ranges are
      * extended as necessary (e.g., to encompass whole lines).
      *
@@ -301,8 +307,7 @@ public final class Formatter {
         // 'de-linting' changes (e.g. import ordering).
         javaInput = ModifierOrderer.reorderModifiers(javaInput, characterRanges);
 
-        JavaCommentsHelper commentsHelper =
-                new JavaCommentsHelper(javaInput.getLineSeparator(), options, internalOptions);
+        JavaCommentsHelper commentsHelper = new JavaCommentsHelper(javaInput.getLineSeparator(), options);
         JavaOutput javaOutput;
         try {
             javaOutput = format(javaInput, options, commentsHelper, debugMode);
