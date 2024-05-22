@@ -26,11 +26,12 @@ import com.intellij.openapi.application.ApplicationInfo;
 import com.intellij.openapi.extensions.PluginId;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.projectRoots.JdkUtil;
+import com.intellij.openapi.projectRoots.ProjectJdkTable;
 import com.intellij.openapi.projectRoots.Sdk;
-import com.intellij.openapi.roots.ProjectRootManager;
 import com.intellij.openapi.util.BuildNumber;
 import com.intellij.openapi.util.SystemInfo;
 import com.palantir.javaformat.bootstrap.BootstrappingFormatterService;
+import com.palantir.javaformat.intellij.utils.SdkVersionComparator;
 import com.palantir.javaformat.java.FormatterService;
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -39,6 +40,7 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -143,7 +145,7 @@ final class FormatterProvider {
     }
 
     private static OptionalInt getSdkVersion(Project project) {
-        return getLatestJdk(project)
+        return getLatestJdk()
                 .map(FormatterProvider::parseSdkJavaVersion)
                 .orElseThrow(() -> new IllegalStateException("Could not determine jdk version for project " + project));
     }
@@ -170,26 +172,8 @@ final class FormatterProvider {
         }
     }
 
-    @Deprecated
-    private static Optional<Sdk> getProjectJdk(Project project) {
-        return Optional.ofNullable(ProjectRootManager.getInstance(project).getProjectSdk());
-    }
-
     private static Optional<Sdk> getLatestJdk() {
-        Sdk[] sdks = ProjectJdkTable.getInstance().getAllJdks();
-        if (sdks.length > 0) {
-            Optional<Sdk> java17Sdk = Arrays.stream(sdks)
-                    .filter(sdk -> sdk.getVersionString().contains("17"))
-                    .findFirst();
-
-            if (java17Sdk.isEmpty()) {
-                throw new RuntimeException("Java 17 sdk required to run plugin");
-            }
-
-            return java17Sdk;
-        } else {
-            return Optional.empty();
-        }
+        return Arrays.stream(ProjectJdkTable.getInstance().getAllJdks()).max(new SdkVersionComparator());
     }
 
     private static URL[] toUrlsUnchecked(List<Path> paths) {
